@@ -41,13 +41,22 @@ function getReportData() {
     `)
     .all();
 
+  const allOrders = db
+    .prepare(`
+      SELECT id, customer, product, amount, created_at
+      FROM orders
+      ORDER BY created_at ASC
+    `)
+    .all();
+
   db.close();
 
   return {
     totalOrders: totalOrders.total,
     totalRevenue: totalRevenue.total,
     topProducts,
-    ordersPerDay
+    ordersPerDay,
+    allOrders
   };
 }
 
