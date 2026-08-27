@@ -159,33 +159,33 @@ function buildReportHTML(report) {
   `;
 }
 
-async function generatePDF() {
+async function generatePDF(outputPath) {
   const report = getReportData();
 
   const browser = await chromium.launch({
     headless: true
   });
 
-  const page = await browser.newPage();
+  try {
+    const page = await browser.newPage();
 
-  const html = buildReportHTML(report);
+    const html = buildReportHTML(report);
 
-  await page.setContent(html);
+    await page.setContent(html);
 
-  fs.mkdirSync("reports", { recursive: true });
+    fs.mkdirSync("reports", { recursive: true });
 
-  await page.pdf({
-    path: "reports/test.pdf",
-    format: "A4",
-    printBackground: true
-  });
-
-  await browser.close();
-
-  console.log("PDF created: reports/test.pdf");
+    await page.pdf({
+      path: outputPath,
+      format: "A4",
+      printBackground: true
+    });
+  } finally {
+    await browser.close();
+  }
 }
 
-generatePDF().catch((error) => {
-  console.error("PDF generation failed:", error);
-  process.exit(1);
-});
+module.exports = {
+  buildReportHTML,
+  generatePDF
+};
