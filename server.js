@@ -7,6 +7,7 @@ const { generatePDF } = require("./generatePdf");
 const {
   createReport,
   getReport,
+  getTodaysReport,
   deleteReport
 } = require("./reports");
 
@@ -18,15 +19,39 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.use(express.json());
+
 app.post("/reports", async (req, res) => {
   let reportId = null;
 
   try {
+    const force = req.body?.force === true;
+
+    // If force is not requested, check whether today's report already exists.
+    if (!force) {
+      const existingReport = getTodaysReport();
+
+      if (existingReport) {
+        const existingFilePath = path.join(
+          __dirname,
+          existingReport.path
+        );
+
+        // Only reuse the report if its PDF still exists.
+        if (fs.existsSync(existingFilePath)) {
+          return res.status(200).json({
+            id: existingReport.id,
+            file: `/reports/${existingReport.id}/file`
+          });
+        }
+      }
+    }
+
     fs.mkdirSync(path.join(__dirname, "reports"), {
       recursive: true
     });
 
-    // Create the database row first so SQLite gives us the ID.
+    // Create database row first so SQLite gives us the ID.
     const report = createReport("pending");
 
     reportId = report.id;
@@ -39,10 +64,10 @@ app.post("/reports", async (req, res) => {
 
     const relativePath = `reports/${reportId}.pdf`;
 
-    // Generate the actual PDF.
+    // Generate the PDF.
     await generatePDF(filePath);
 
-    // Update the database with the real file path.
+    // Store the real PDF path.
     const db = new DatabaseSync("report.db");
 
     db.prepare(`
@@ -53,7 +78,7 @@ app.post("/reports", async (req, res) => {
 
     db.close();
 
-    res.status(201).json({
+    return res.status(201).json({
       id: reportId,
       file: `/reports/${reportId}/file`
     });
@@ -64,7 +89,7 @@ app.post("/reports", async (req, res) => {
       deleteReport(reportId);
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       error: "Failed to generate report"
     });
   }

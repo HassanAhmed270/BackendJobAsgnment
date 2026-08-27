@@ -38,6 +38,18 @@ function getReport(id) {
     `)
     .get(id);
 }
+function getTodaysReport() {
+  return db
+    .prepare(`
+      SELECT id, path, created_at
+      FROM reports
+      WHERE path != 'pending'
+        AND DATE(created_at) = DATE('now')
+      ORDER BY id DESC
+      LIMIT 1
+    `)
+    .get();
+}
 
 function deleteReport(id) {
   db.prepare(`
@@ -60,6 +72,7 @@ function getNextReportId() {
 module.exports = {
   createReport,
   getReport,
+  getTodaysReport,
   deleteReport,
   getNextReportId
 };
